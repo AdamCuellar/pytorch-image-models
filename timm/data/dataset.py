@@ -6,6 +6,8 @@ import torch.utils.data as data
 import os
 import torch
 import logging
+import numpy as np
+import cv2
 
 from PIL import Image
 
@@ -37,7 +39,17 @@ class ImageDataset(data.Dataset):
     def __getitem__(self, index):
         img, target = self.parser[index]
         try:
-            img = img.read() if self.load_bytes else Image.open(img).convert('RGB')
+            img = img.read() if self.load_bytes else Image.open(img) #.convert('RGB')
+
+            # TODO: Converts 16bit to 8bit through minmax norm
+            if img.mode != 'RGB':
+                img = np.array(img)
+                if img.ndim == 2:
+                    img = np.dstack([img, img, img])
+
+                img = cv2.normalize(img, None, alpha=0, beta=255, norm_type=cv2.NORM_MINMAX, dtype=cv2.CV_8U)
+                img = Image.fromarray(img)
+
         except Exception as e:
             _logger.warning(f'Skipped sample (index {index}, file {self.parser.filename(index)}). {str(e)}')
             self._consecutive_errors += 1
